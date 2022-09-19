@@ -1,0 +1,874 @@
+package analyzer;
+
+import java_cup.runtime.*;
+import analyzer.ParserPySym;
+import analyzer.Lexer;
+import java_cup.runtime.XMLElement;
+import dao.Token;
+import dao.TokenError;
+import java.util.ArrayList;
+import javax.swing.JTextArea;
+import translator_py.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import ui.*;
+class ParserPy;
+parser code{:
+  private JTextArea txt_terminal = WindowMain.txt_terminal;
+  int ident = 0;
+  private String codig = "";
+  public String getCode(){
+    return codig;
+  }
+  ArrayList<TokenError> listadoErroresSintacticos = new ArrayList();
+	
+	@Override
+	public void syntax_error(Symbol a){
+		Token tokenError = (Token) a.value;//lo transformamos en token para obtener su lexema, fila y columna		
+		String msgError = "Se esperaba: ";	
+		
+                
+		int linea = (tokenError != null) ? tokenError.getLine() : 0;
+		int columna = (tokenError != null) ? tokenError.getColumn() : 0;
+
+		if(a.sym == sym.EOF){
+			System.out.println("END OF FILE");
+			TokenError tokenErrorAux = new TokenError("ERROR SINTACTICO", "Etiqueta de cierre",
+                                                 "La etiqueta de cierre debe ser <C_GCIC>", -1, -1);
+			listadoErroresSintacticos.add(tokenErrorAux);
+		}else{
+      for(int i = 0; i < expected_token_ids().size(); i++){
+        msgError += symbl_name_from_id(expected_token_ids().get(i)) + " ";
+        if(i < expected_token_ids().size() - 1)
+          msgError = msgError + ", ";			
+      }
+      String errorSin = "<<<SINTAX ERROR:PY>>>: linea: "+
+                        +tokenError.getLine()+" columna: "+tokenError.getColumn()+" MENSAJE: " + msgError 
+                        + " pero se obtuvo: " + tokenError.getLexeme() + " de tipo: " + tokenError.getType();
+      TokenError tokenErrorAux = new TokenError(msgError, tokenError.getLexeme(), "ERROR SINTACTICO", linea, columna);
+      txt_terminal.append(errorSin+"\n");
+      listadoErroresSintacticos.add(tokenErrorAux);
+    }
+  }
+  public void report_error(String message, Object info) {
+    System.out.println("Reportar Error:PY");
+  }
+    
+	public void report_fatal_error(String message, Object info) {
+    txt_terminal.append("Error Fatal:PY: " + info + "\n");
+  }
+
+	public void aumentarIdentacion(){
+		ident++;
+	}
+
+	public void reducirIdentacion(){
+		ident--;
+	}
+
+	public int getIdentacion(){
+		return this.ident;
+	}
+
+  protected int error_sync_size() {
+      return 1;
+  }
+  private void crearCodigo(String codi){
+    codig = codi;
+  }
+    
+:}
+    //                                          <<<--- TOKENS --->>>
+    //                              SIMBOLOS
+
+terminal Token PARENTESIS_I     ;
+terminal Token PARENTESIS_D     ;
+terminal Token FLECHA           ;
+terminal Token INTERROGANTE_I   ;
+terminal Token INTERROGANTE_D   ;
+terminal Token PTO_COMA         ;
+terminal Token COMA             ;
+terminal Token CORCHETE_I       ;
+terminal Token CORCHETE_D       ;
+    //                              VALORES
+terminal Token VALUE_NUMERO     ;
+terminal Token VALUE_STRING     ;
+terminal Token VALUE_CHAR       ;
+terminal Token VALUE_BOOL       ;
+terminal Token VALUE_ID         ;
+    //                              OPERADORES
+    //                  OPERADORES ARITMETICOS
+terminal Token SUMA             ;
+terminal Token RESTA            ;
+terminal Token PRODUCTO         ;
+terminal Token DIVISION         ;
+terminal Token MODULO           ;
+terminal Token POTENCIA         ;
+    //                  OPERADORES LOGICOS
+terminal Token AND              ;
+terminal Token OR               ;
+terminal Token NOT              ;
+    //                  OPERADORES RELACIONALES
+terminal Token MAYOR            ;
+terminal Token MENOR            ;
+terminal Token MAYOR_O          ;
+terminal Token MENOR_O          ;
+terminal Token ES_IGUAL         ;
+terminal Token DIFERENTE        ;
+    //                              PALABRAS RESERVADAS
+terminal Token R_INICIO         ;
+terminal Token R_FIN            ;
+    //                  DECLARACION
+terminal Token R_INGRESAR       ;
+terminal Token R_COMO           ;
+terminal Token R_CONVALOR       ;
+    //                  CONDICIONALES
+terminal Token R_SI             ;
+terminal Token R_ENTONCES       ;
+terminal Token R_DELOCONTRARIO  ;
+terminal Token R_OSI            ;
+terminal Token R_FINSI          ;
+    //                  ELECCION MULTIPLE
+terminal Token R_SEGUN          ;
+terminal Token R_HACER          ;
+terminal Token R_FINSEGUN       ;
+    //                  CICLOS
+terminal Token R_PARA           ;
+terminal Token R_HASTA          ;
+terminal Token R_CON            ;
+terminal Token R_INCREMENTO     ;
+terminal Token R_FINPARA        ;
+terminal Token R_MIENTRAS       ;
+terminal Token R_FINMIENTRAS    ;
+terminal Token R_REPETIR        ;
+terminal Token R_HASTAQUE       ;
+    //                  SENTENCIAS
+terminal Token R_RETORNAR       ;
+terminal Token R_EJECUTAR       ;
+    //                  IMPRESIONES
+terminal Token R_IMPRIMIR       ;
+terminal Token R_IMPRIMIRLN     ;
+    //                  METODOS Y FUNCIONES          
+terminal Token R_METODO         ;
+terminal Token R_CONPARAMETROS  ;
+terminal Token R_FINMETODO      ;
+terminal Token R_FUNCION        ;
+terminal Token R_FINFUNCION     ;
+    //                  TIPOS DE DATOS
+terminal Token R_STRING         ;
+terminal Token R_CHAR           ;
+terminal Token R_BOOL           ;
+terminal Token R_NUMBER         ;
+//                                                  NO TERMINALES
+non terminal inicio                     ;
+non terminal body                       ;
+non terminal ArrayList<TraductorPy>     bloque_instrucciones       ;
+non terminal TraductorPy                instruccion                ;
+non terminal ArrayList<TraductorPy>     otra_instruccion           ;
+//DECLARACION Y ASIGNACION
+non terminal DeclaracionPy              declaracion                ;
+non terminal ListaValoresPy             expresion_asignacion       ;
+non terminal ListaVariablesPy           variables                  ;
+non terminal ArrayList<ValorElementoPy> otra_variable              ;
+non terminal String                     tipo_dato                  ;
+non terminal AsignacionPy               asignacion                 ;
+//ARITMETICA
+non terminal ArrayList<ValorElementoPy> operacion_general          ;
+non terminal ValorElementoPy            valor_primario             ;
+//IF - ENDIF
+non terminal CondicionSiPy              condicional_si             ;
+non terminal ListaValoresPy             condicion                  ;
+non terminal ArrayList<CondicionOSiPy>  osi_condiciones            ;
+non terminal SiDeLoContrarioPy          delo_contrario             ;
+//SEGUN - FINSEGUN
+non terminal CondicionSegunPy           condicional_segun          ;
+non terminal ArrayList<OpcionSegunPy>   opciones_segun             ;
+non terminal OpcionSegunPy              opcion_segun               ;
+non terminal ArrayList<OpcionSegunPy>   otra_opcion_segun          ;
+non terminal ArrayList<ValorElementoPy> valor_segun                ;
+non terminal ArrayList<TraductorPy>     instrucciones_segun        ;
+non terminal DeLoContrarioSegunPy       delo_contrario_segun       ;
+//CICLO PARA
+non terminal CicloParaPy                ciclo_para                 ;
+non terminal ListaValoresPy             con_incremento             ;
+//CICLO MIENTRAS
+non terminal CicloMientrasPy            ciclo_mientras             ;
+//CICLO REPETIR HASTA
+non terminal CicloRepetirPy             ciclo_repetir_hasta        ;
+//RETORNO
+non terminal RetornoPy                  retorno                    ;
+non terminal ListaValoresPy             retorno_val                ;
+//FUNCIONES Y METODOS
+non terminal MetodoPy                   metodos                    ;
+non terminal FuncionPy                  funciones                  ;
+non terminal ListaIngresoParametrosPy   con_parametros             ;
+non terminal ParametroPy                parametro                  ;
+non terminal ArrayList<ParametroPy>     otro_parametro             ;
+//IMPRESIONES
+non terminal ImprimirPy                 imprimir                   ;
+non terminal ImprimirLnPy               imprimirln                 ;
+//EJECUTAR
+non terminal EjecutarPy                 ejecutar_metodo            ;
+non terminal ListaParametrosPy          lista_parametros           ;
+non terminal ArrayList<ValorElementoPy> otro_param                 ;
+//                                                  PRECEDENCIA
+/* 1 */ precedence left OR;
+/* 2 */ precedence left AND;
+/* 3 */ precedence nonassoc FLECHA, ES_IGUAL, DIFERENTE;
+/* 4 */ precedence nonassoc MAYOR_O, MENOR_O, MENOR, MAYOR;
+/* 5 */ precedence left SUMA, RESTA;
+/* 6 */ precedence left MODULO;
+/* 7 */ precedence left PRODUCTO, DIVISION;
+/* 8 */ precedence right POTENCIA;
+/* 8 */ precedence right NOT;
+//                                                  PRODUCCIONES
+start with inicio;
+
+inicio                  ::= 
+                              body
+                            | //epsilon
+                            ;
+body                    ::= 
+                              R_INICIO bloque_instrucciones:a R_FIN
+                              {:
+                                ListaInstruccionesPy l = new ListaInstruccionesPy(a, getIdentacion());
+                                Python p = new Python(l);
+                                crearCodigo(p.generarCodigoPy());
+                              :}
+                            ;
+bloque_instrucciones    ::=
+                              {:aumentarIdentacion();:}instruccion:a{:reducirIdentacion();:} otra_instruccion:b
+                              {:
+                                ArrayList<TraductorPy> instrucciones = new ArrayList();
+                                if(a != null)
+                                  instrucciones.add(a);
+                                if(b != null)
+                                  instrucciones.addAll(b);
+                                RESULT = instrucciones;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+instruccion             ::=
+                              declaracion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | asignacion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | condicional_si:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | condicional_segun:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_para:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_mientras:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_repetir_hasta:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | retorno:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | metodos:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | funciones:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | imprimir:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | imprimirln:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ejecutar_metodo:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | error
+                            ;
+otra_instruccion        ::= 
+                              {:aumentarIdentacion();:}instruccion:a{:reducirIdentacion();:} otra_instruccion:b
+                              {:
+                                ArrayList<TraductorPy> instrucciones = new ArrayList();
+                                if(a != null)
+                                  instrucciones.add(a);
+                                instrucciones.addAll(b);
+                                RESULT = instrucciones;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = new ArrayList();
+                              :}
+                            ;
+//////////////////////////////////////////////// <<<< ASIGNACIONES Y OPERACIONES >>>>
+declaracion             ::= 
+                              R_INGRESAR variables:a R_COMO tipo_dato:b R_CONVALOR expresion_asignacion:c PTO_COMA
+                              {:
+                                DeclaracionPy d = new DeclaracionPy(b,c,a, getIdentacion()); 
+                                txt_terminal.append(d.generarCodigoPy()+"\n");
+                                RESULT = d; 
+                              :}
+                            ;
+variables               ::= 
+                              VALUE_ID:a otra_variable:b
+                              {: 
+                                ArrayList<ValorElementoPy> variables = new ArrayList();
+                                ValorElementoPy valor = new ValorElementoPy(a.getLexeme(),"var");
+                                variables.add(valor);
+                                if(b != null)
+                                  variables.addAll(b);
+                                ListaVariablesPy l = new ListaVariablesPy(variables);
+                                l.setVariables(variables);
+                                RESULT = l;
+                              :}
+                            ;
+otra_variable           ::=  
+                              COMA VALUE_ID:a otra_variable:b
+                              {: 
+                                ArrayList<ValorElementoPy> valores = new ArrayList();
+                                ValorElementoPy valor = new ValorElementoPy(a.getLexeme(),"var");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                RESULT = valores; 
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+tipo_dato               ::=
+                              R_BOOL:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_CHAR:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_STRING:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_NUMBER:a
+                            {: RESULT = a.getLexeme(); :}
+                            ;
+expresion_asignacion    ::= 
+                              operacion_general:a
+                              {:
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                RESULT = l;
+                              :}
+                            ;
+asignacion              ::=
+                              variables:a FLECHA expresion_asignacion:b PTO_COMA
+                              {:
+                                AsignacionPy asig = new AsignacionPy(a,b, getIdentacion());
+                                txt_terminal.append(asig.generarCodigoPy()+"\n");
+                                RESULT = asig;
+                              :}
+                            ;
+operacion_general       ::= operacion_general:a AND operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("and", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a OR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("or", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | NOT operacion_general:a
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                ValorElementoPy v = new ValorElementoPy("not", "operacion");
+                                l.add(v);
+                                l.addAll(a);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MAYOR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("mayor", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MENOR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("menor", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MAYOR_O operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("mayor_o_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MENOR_O operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("menor_o_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a DIFERENTE operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("es_diferente", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a ES_IGUAL operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("es_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a SUMA operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("+", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a RESTA operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("-", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a PRODUCTO operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("*", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MODULO operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("mod", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a POTENCIA CORCHETE_I operacion_general:b CORCHETE_D
+                              {:
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v1 = new ValorElementoPy("pow","operador");
+                                l.add(v1);
+                                ValorElementoPy v2 = new ValorElementoPy("(", "corI");
+                                l.add(v2);
+                                l.addAll(b);
+                                ValorElementoPy v3 = new ValorElementoPy(")", "corD");
+                                l.add(v3);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a DIVISION operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoPy v = new ValorElementoPy("/", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | valor_primario:a
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                l.add(a);
+                                RESULT = l;
+                              :}
+                            | RESTA operacion_general:a
+                              {: 
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                ValorElementoPy v = new ValorElementoPy("-", "operacion");
+                                l.add(v);
+                                l.addAll(a);
+                                RESULT = l;
+                              :}
+                            | PARENTESIS_I operacion_general:a PARENTESIS_D
+                              {:
+                                ArrayList<ValorElementoPy> l = new ArrayList();
+                                ValorElementoPy v1 = new ValorElementoPy("(","parI");
+                                l.add(v1);
+                                l.addAll(a);
+                                ValorElementoPy v2 = new ValorElementoPy(")","parD");
+                                l.add(v2);
+                                RESULT = l;
+                              :}
+                            ;
+valor_primario          ::=
+                              VALUE_ID:a  {: RESULT = new ValorElementoPy(a.getLexeme(),"var"); :}
+                            | VALUE_NUMERO:a {: RESULT = new ValorElementoPy(a.getLexeme(), "numero"); :}
+                            | VALUE_STRING:a {: RESULT = new ValorElementoPy(a.getLexeme(), "cadena"); :}
+                            | VALUE_CHAR:a 
+                            {:
+                              Pattern patron = Pattern.compile("\'\\$\\{(?<CHART>[0-9]{1,3})\\}\'");
+                              Matcher matcher = patron.matcher(a.getLexeme());
+                              if(matcher.find()){
+                                  char c = (char)Integer.parseInt(matcher.group("CHART"));
+                                  RESULT = new ValorElementoPy("'"+String.valueOf(c)+"'", "caracter");
+                              }else{
+                                  RESULT = new ValorElementoPy(a.getLexeme(),"caracter");
+                              }
+                            :}
+                            | VALUE_BOOL:a  {: RESULT = new ValorElementoPy(a.getLexeme(), "boolean"); :}
+                            | R_EJECUTAR VALUE_ID:a PARENTESIS_I lista_parametros:b PARENTESIS_D
+                              {:
+                                String s = a.getLexeme()+ "(";
+                                if(b != null)
+                                  s += b.generarCodigoPy();
+                                s+= ")";
+                                RESULT = new ValorElementoPy(s,"funcion");
+                              :} 
+                            ;
+
+///////////////////////////////////// <<<< CONDICIONAL IF >>>>
+condicional_si          ::= 
+                              R_SI condicion:a R_ENTONCES bloque_instrucciones:b osi_condiciones:c delo_contrario:d R_FINSI
+                              {:
+                                ListaOsiCondicionPy losi = new ListaOsiCondicionPy(c,getIdentacion());
+                                ListaInstruccionesPy ins = new ListaInstruccionesPy(b,getIdentacion());
+                                CondicionSiPy cond = new CondicionSiPy(a,losi,d,ins,getIdentacion());
+                                txt_terminal.append(cond.generarCodigoPy()+"\n");
+                                RESULT = cond;
+                              :}
+                            ;
+condicion               ::=
+                              operacion_general:a
+                              {:
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                RESULT = l;
+                              :}
+                            ;
+osi_condiciones         ::=
+                              R_OSI condicion:a R_ENTONCES bloque_instrucciones:b osi_condiciones:c
+                              {:
+                                ArrayList<CondicionOSiPy> osis = new ArrayList();
+                                ListaInstruccionesPy ins = new ListaInstruccionesPy(b, getIdentacion());
+                                CondicionOSiPy osi = new CondicionOSiPy(a,ins,getIdentacion());
+                                osis.add(osi);
+                                if(c != null)
+                                  osis.addAll(c);
+                                RESULT = osis;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+delo_contrario          ::=
+                              R_DELOCONTRARIO bloque_instrucciones:a
+                              {:
+                                ListaInstruccionesPy ins = new ListaInstruccionesPy(a, getIdentacion());
+                                SiDeLoContrarioPy s = new SiDeLoContrarioPy(ins,getIdentacion());
+                                RESULT = s; 
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< CONDICIONAL SEGUN >>>>
+condicional_segun       ::=
+                              R_SEGUN valor_segun:a R_HACER opciones_segun:b delo_contrario_segun:c  R_FINSEGUN
+                              {:
+                                ListaValoresPy lv = new ListaValoresPy(a);
+                                for(OpcionSegunPy op: b){
+                                  op.setComparacion(lv);
+                                }
+                                ListaOpcionSegunPy lop = new ListaOpcionSegunPy(b);
+                                CondicionSegunPy cs = new CondicionSegunPy(lop,c);
+                                txt_terminal.append(cs.generarCodigoPy() + "\n");
+                                RESULT = cs;
+                              :}
+                            ;
+instrucciones_segun      ::= 
+                              bloque_instrucciones:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+valor_segun             ::=
+                              operacion_general:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+opciones_segun          ::= 
+                              opcion_segun:a otra_opcion_segun:b
+                              {:
+                                ArrayList<OpcionSegunPy> l = new ArrayList();
+                                a.setTipo(0);
+                                l.add(a);
+                                if(b != null)
+                                  l.addAll(b);
+                                RESULT = l;
+                              :}
+                            ;
+opcion_segun            ::= 
+                              INTERROGANTE_I valor_segun:a INTERROGANTE_D R_ENTONCES bloque_instrucciones:b
+                              {:
+                                ListaInstruccionesPy l = new ListaInstruccionesPy(b, getIdentacion());
+                                ListaValoresPy lv = new ListaValoresPy(a);
+                                OpcionSegunPy op = new OpcionSegunPy(lv,l,getIdentacion(),1);
+                                RESULT = op;
+                              :}
+                            ;
+otra_opcion_segun       ::= 
+                              opcion_segun:a otra_opcion_segun:b
+                              {:
+                                ArrayList<OpcionSegunPy> l = new ArrayList();
+                                l.add(a);
+                                if(b != null)
+                                  l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+delo_contrario_segun    ::=
+                              R_DELOCONTRARIO R_ENTONCES instrucciones_segun:a
+                              {:
+                                ListaInstruccionesPy l = new ListaInstruccionesPy(a, getIdentacion());
+                                DeLoContrarioSegunPy dl = new DeLoContrarioSegunPy(l, getIdentacion());
+                                RESULT = dl;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+
+////////////////////////////////////// <<<< CICLO PARA >>>>
+ciclo_para              ::=
+                              R_PARA VALUE_ID:i FLECHA operacion_general:a R_HASTA operacion_general:b con_incremento:c R_HACER bloque_instrucciones:d R_FINPARA
+                              {:
+                                ValorElementoPy id = new ValorElementoPy(i.getLexeme(),"id");
+                                ListaValoresPy ini = new ListaValoresPy(a);
+                                ListaValoresPy fini = new ListaValoresPy(b);
+                                ListaValoresPy paso = c;
+                                ListaInstruccionesPy inst = new ListaInstruccionesPy(d, getIdentacion());
+                                CicloParaPy cic = new CicloParaPy(id,ini,fini,paso,inst,getIdentacion());
+                                txt_terminal.append(cic.generarCodigoPy() + "\n");
+                                RESULT = cic;
+                              :}
+                            ;
+con_incremento          ::=
+                              R_CON R_INCREMENTO operacion_general:a
+                              {:
+                                RESULT = new ListaValoresPy(a);
+                              :}
+                            | // epsilon
+                              {:
+                               RESULT = null;
+                              :}
+                            ;
+////////////////////////////////////// <<<< CICLO MIENTRAS >>>>
+ciclo_mientras          ::= 
+                              R_MIENTRAS condicion:a R_HACER bloque_instrucciones:b R_FINMIENTRAS
+                              {:
+                                ListaInstruccionesPy inst = new ListaInstruccionesPy(b, getIdentacion());
+                                ListaValoresPy cond = a;
+                                CicloMientrasPy mien = new CicloMientrasPy(cond,inst,getIdentacion());
+                                txt_terminal.append(mien.generarCodigoPy() + "\n");
+                                RESULT = mien;
+                              :}
+                            ;
+////////////////////////////////////// <<<< CICLO REPETIR HASTA >>>>
+ciclo_repetir_hasta     ::=
+                              R_REPETIR bloque_instrucciones:a R_HASTAQUE condicion:b
+                              {:
+                                ListaValoresPy cond = b;
+                                ListaInstruccionesPy inst = new ListaInstruccionesPy(a,getIdentacion());
+                                CicloRepetirPy cr = new CicloRepetirPy(cond,inst,getIdentacion());
+                                txt_terminal.append(cr.generarCodigoPy() + "\n");
+                                RESULT = cr;
+                              :}
+                            ;
+///////////////////////////////////// <<<< RETORNO >>>>
+retorno                 ::= 
+                              R_RETORNAR retorno_val:a PTO_COMA
+                              {:
+                                ListaValoresPy l = a;
+                                RetornoPy r = new RetornoPy(a,getIdentacion());
+                                txt_terminal.append(r.generarCodigoPy() + "\n");
+                                RESULT = r;
+                              :}
+                            ;
+retorno_val             ::= 
+                              condicion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+///////////////////////////////////// <<<< METODOS >>>>
+metodos                 ::=
+                              R_METODO VALUE_ID:a con_parametros:b bloque_instrucciones:c R_FINMETODO
+                              {:
+                                ListaIngresoParametrosPy l = b;
+                                ListaInstruccionesPy li = new ListaInstruccionesPy(c, getIdentacion());
+                                MetodoPy met = new MetodoPy(a.getLexeme(),l,li,getIdentacion());
+                                txt_terminal.append(met.generarCodigoPy()+"\n");
+                                RESULT = met;
+                              :}
+                            ;
+///////////////////////////////////// <<<< FUNCIONES >>>>
+funciones               ::=
+                              R_FUNCION VALUE_ID:a tipo_dato:b con_parametros:c bloque_instrucciones:d R_FINFUNCION
+                              {:
+                                ListaIngresoParametrosPy l = c;
+                                ListaInstruccionesPy li = new ListaInstruccionesPy(d, getIdentacion());
+                                FuncionPy fun = new FuncionPy(b,a.getLexeme(),l,li,getIdentacion());
+                                txt_terminal.append(fun.generarCodigoPy() + "\n");
+                                RESULT = fun;
+                              :}
+                            ;
+///////////////////////////////////// <<<< EJECUTAR >>>>
+ejecutar_metodo         ::= 
+                              R_EJECUTAR VALUE_ID:a PARENTESIS_I lista_parametros:b PARENTESIS_D PTO_COMA
+                              {:
+                                EjecutarPy e = new EjecutarPy(a.getLexeme(), b, getIdentacion());
+                                txt_terminal.append(e.generarCodigoPy() + "\n");
+                                RESULT = e;
+                              :}
+                            ;
+lista_parametros        ::=
+                              operacion_general:a otro_param:b
+                              {:
+                                ArrayList<ValorElementoPy> valores = new ArrayList();
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                ValorElementoPy valor = new ValorElementoPy(l.generarCodigoPy(),"valor");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                ListaParametrosPy l2 = new ListaParametrosPy(valores);
+                                RESULT = l2;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+otro_param              ::=
+                              COMA operacion_general:a otro_param:b
+                              {:
+                                ArrayList<ValorElementoPy> valores = new ArrayList();
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                ValorElementoPy valor = new ValorElementoPy(l.generarCodigoPy(),"valor");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                RESULT = valores; 
+                              :}
+                              
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< PARAMETROS >>>>
+con_parametros          ::=
+                              R_CONPARAMETROS PARENTESIS_I parametro:a otro_parametro:b PARENTESIS_D
+                              {:
+                                ArrayList<ParametroPy> par = new ArrayList();
+                                par.add(a);
+                                if(b != null)
+                                  par.addAll(b);
+                                ListaIngresoParametrosPy l = new ListaIngresoParametrosPy(par);
+                                RESULT = l;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+parametro               ::= 
+                              VALUE_ID:a tipo_dato:b
+                              {:
+                                RESULT = new ParametroPy(a.getLexeme(), b);
+                              :} 
+                            ;
+otro_parametro          ::= 
+                              COMA parametro:a otro_parametro:b
+                              {:
+                                ArrayList<ParametroPy> par = new ArrayList();
+                                par.add(a);
+                                if(b != null)
+                                  par.addAll(b);
+                                RESULT = par;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< IPRESIONES >>>>
+imprimir                ::= 
+                              R_IMPRIMIR operacion_general:a PTO_COMA
+                              {:
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                ImprimirPy i = new ImprimirPy(l, getIdentacion());
+                                txt_terminal.append(i.generarCodigoPy() + "\n");
+                                RESULT = i;
+                              :}
+                            ;
+imprimirln              ::= 
+                              R_IMPRIMIRLN operacion_general:a PTO_COMA
+                              {:
+                                ListaValoresPy l = new ListaValoresPy(a);
+                                ImprimirLnPy i = new ImprimirLnPy(l, getIdentacion());
+                                txt_terminal.append(i.generarCodigoPy() + "\n");
+                                RESULT = i;
+                              :}
+                            ;

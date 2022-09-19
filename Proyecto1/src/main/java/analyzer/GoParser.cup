@@ -1,0 +1,882 @@
+package analyzer;
+
+import java_cup.runtime.*;
+import analyzer.ParserGoSym;
+import analyzer.Lexer;
+import java_cup.runtime.XMLElement;
+import dao.Token;
+import dao.TokenError;
+import java.util.ArrayList;
+import javax.swing.JTextArea;
+import translator_go.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import ui.*;
+
+class ParserGo;
+parser code{:
+  private JTextArea txt_terminal = WindowMain.txt_terminal;
+  int ident = 0;
+  private String code = "";
+  private ArrayList<TraductorGo> metodos_list = new ArrayList();
+  private void agregarMetodo(TraductorGo m){
+    metodos_list.add(m);
+  }
+  private ArrayList<TraductorGo> getMetodos(){
+    return metodos_list;
+  }
+  public String getCode(){
+    return code;
+  }
+  ArrayList<TokenError> listadoErroresSintacticos = new ArrayList();
+	
+	@Override
+	public void syntax_error(Symbol a){
+		Token tokenError = (Token) a.value;//lo transformamos en token para obtener su lexema, fila y columna		
+		String msgError = "Se esperaba: ";	
+		
+                
+		int linea = (tokenError != null) ? tokenError.getLine() : 0;
+		int columna = (tokenError != null) ? tokenError.getColumn() : 0;
+
+		if(a.sym == sym.EOF){
+			System.out.println("END OF FILE");
+			TokenError tokenErrorAux = new TokenError("ERROR SINTACTICO", "Etiqueta de cierre",
+                                                 "La etiqueta de cierre debe ser <C_GCIC>", -1, -1);
+			listadoErroresSintacticos.add(tokenErrorAux);
+		}else{
+      for(int i = 0; i < expected_token_ids().size(); i++){
+        msgError += symbl_name_from_id(expected_token_ids().get(i)) + " ";
+        if(i < expected_token_ids().size() - 1)
+          msgError = msgError + ", ";			
+      }
+      String errorSin = "<<<SINTAX ERROR:GO>>>: linea: "+
+                        +tokenError.getLine()+" columna: "+tokenError.getColumn()+" MENSAJE: " + msgError 
+                        + " pero se obtuvo: " + tokenError.getLexeme() + " de tipo: " + tokenError.getType();
+      TokenError tokenErrorAux = new TokenError(msgError, tokenError.getLexeme(), "ERROR SINTACTICO", linea, columna);
+      txt_terminal.append(errorSin+"\n");
+      listadoErroresSintacticos.add(tokenErrorAux);
+    }
+  }
+  public void report_error(String message, Object info) {
+    System.out.println("Reportar Error:GO");
+  }
+    
+	public void report_fatal_error(String message, Object info) {
+    txt_terminal.append("Error Fatal:GO: " + info + "\n");
+  }
+
+	public void aumentarIdentacion(){
+		ident++;
+	}
+
+	public void reducirIdentacion(){
+		ident--;
+	}
+
+	public int getIdentacion(){
+		return this.ident;
+	}
+
+  protected int error_sync_size() {
+      return 1;
+  }
+  private void crearCodigo(String codi){
+    code = codi;
+  }
+    
+:}
+    //                                          <<<--- TOKENS --->>>
+    //                              SIMBOLOS
+
+terminal Token PARENTESIS_I     ;
+terminal Token PARENTESIS_D     ;
+terminal Token FLECHA           ;
+terminal Token INTERROGANTE_I   ;
+terminal Token INTERROGANTE_D   ;
+terminal Token PTO_COMA         ;
+terminal Token COMA             ;
+terminal Token CORCHETE_I       ;
+terminal Token CORCHETE_D       ;
+    //                              VALORES
+terminal Token VALUE_NUMERO     ;
+terminal Token VALUE_STRING     ;
+terminal Token VALUE_CHAR       ;
+terminal Token VALUE_BOOL       ;
+terminal Token VALUE_ID         ;
+    //                              OPERADORES
+    //                  OPERADORES ARITMETICOS
+terminal Token SUMA             ;
+terminal Token RESTA            ;
+terminal Token PRODUCTO         ;
+terminal Token DIVISION         ;
+terminal Token MODULO           ;
+terminal Token POTENCIA         ;
+    //                  OPERADORES LOGICOS
+terminal Token AND              ;
+terminal Token OR               ;
+terminal Token NOT              ;
+    //                  OPERADORES RELACIONALES
+terminal Token MAYOR            ;
+terminal Token MENOR            ;
+terminal Token MAYOR_O          ;
+terminal Token MENOR_O          ;
+terminal Token ES_IGUAL         ;
+terminal Token DIFERENTE        ;
+    //                              PALABRAS RESERVADAS
+terminal Token R_INICIO         ;
+terminal Token R_FIN            ;
+    //                  DECLARACION
+terminal Token R_INGRESAR       ;
+terminal Token R_COMO           ;
+terminal Token R_CONVALOR       ;
+    //                  CONDICIONALES
+terminal Token R_SI             ;
+terminal Token R_ENTONCES       ;
+terminal Token R_DELOCONTRARIO  ;
+terminal Token R_OSI            ;
+terminal Token R_FINSI          ;
+    //                  ELECCION MULTIPLE
+terminal Token R_SEGUN          ;
+terminal Token R_HACER          ;
+terminal Token R_FINSEGUN       ;
+    //                  CICLOS
+terminal Token R_PARA           ;
+terminal Token R_HASTA          ;
+terminal Token R_CON            ;
+terminal Token R_INCREMENTO     ;
+terminal Token R_FINPARA        ;
+terminal Token R_MIENTRAS       ;
+terminal Token R_FINMIENTRAS    ;
+terminal Token R_REPETIR        ;
+terminal Token R_HASTAQUE       ;
+    //                  SENTENCIAS
+terminal Token R_RETORNAR       ;
+terminal Token R_EJECUTAR       ;
+    //                  IMPRESIONES
+terminal Token R_IMPRIMIR       ;
+terminal Token R_IMPRIMIRLN     ;
+    //                  METODOS Y FUNCIONES          
+terminal Token R_METODO         ;
+terminal Token R_CONPARAMETROS  ;
+terminal Token R_FINMETODO      ;
+terminal Token R_FUNCION        ;
+terminal Token R_FINFUNCION     ;
+    //                  TIPOS DE DATOS
+terminal Token R_STRING         ;
+terminal Token R_CHAR           ;
+terminal Token R_BOOL           ;
+terminal Token R_NUMBER         ;
+//                                                  NO TERMINALES
+non terminal inicio                     ;
+non terminal body                       ;
+non terminal ArrayList<TraductorGo>     bloque_instrucciones       ;
+non terminal TraductorGo                instruccion                ;
+non terminal ArrayList<TraductorGo>     otra_instruccion           ;
+//DECLARACION Y ASIGNACION
+non terminal DeclaracionGo              declaracion                ;
+non terminal ListaValoresGo             expresion_asignacion       ;
+non terminal ListaVariablesGo           variables                  ;
+non terminal ArrayList<ValorElementoGo> otra_variable              ;
+non terminal String                     tipo_dato                  ;
+non terminal AsignacionGo               asignacion                 ;
+//ARITMETICA
+non terminal ArrayList<ValorElementoGo> operacion_general          ;
+non terminal ValorElementoGo            valor_primario             ;
+//IF - ENDIF
+non terminal CondicionSiGo              condicional_si             ;
+non terminal ListaValoresGo             condicion                  ;
+non terminal ArrayList<CondicionOSiGo>  osi_condiciones            ;
+non terminal SiDeLoContrarioGo          delo_contrario             ;
+//SEGUN - FINSEGUN
+non terminal CondicionSegunGo           condicional_segun          ;
+non terminal ArrayList<OpcionSegunGo>   opciones_segun             ;
+non terminal OpcionSegunGo              opcion_segun               ;
+non terminal ArrayList<OpcionSegunGo>   otra_opcion_segun          ;
+non terminal ArrayList<ValorElementoGo> valor_segun                ;
+non terminal ArrayList<TraductorGo>     instrucciones_segun        ;
+non terminal DeLoContrarioSegunGo       delo_contrario_segun       ;
+//CICLO PARA
+non terminal CicloParaGo                ciclo_para                 ;
+non terminal ListaValoresGo             con_incremento             ;
+//CICLO MIENTRAS
+non terminal CicloMientrasGo            ciclo_mientras             ;
+//CICLO REPETIR HASTA
+non terminal CicloRepetirGo             ciclo_repetir_hasta        ;
+//RETORNO
+non terminal RetornoGo                  retorno                    ;
+non terminal ListaValoresGo             retorno_val                ;
+//FUNCIONES Y METODOS
+non terminal MetodoGo                   metodos                    ;
+non terminal FuncionGo                  funciones                  ;
+non terminal ListaIngresoParametrosGo   con_parametros             ;
+non terminal ParametroGo                parametro                  ;
+non terminal ArrayList<ParametroGo>     otro_parametro             ;
+//IMPRESIONES
+non terminal ImprimirGo                 imprimir                   ;
+non terminal ImprimirLnGo               imprimirln                 ;
+//EJECUTAR
+non terminal EjecutarGo                 ejecutar_metodo            ;
+non terminal ListaParametrosGo          lista_parametros           ;
+non terminal ArrayList<ValorElementoGo> otro_param                 ;
+//                                                  PRECEDENCIA
+/* 1 */ precedence left OR;
+/* 2 */ precedence left AND;
+/* 3 */ precedence nonassoc FLECHA, ES_IGUAL, DIFERENTE;
+/* 4 */ precedence nonassoc MAYOR_O, MENOR_O, MENOR, MAYOR;
+/* 5 */ precedence left SUMA, RESTA;
+/* 6 */ precedence left MODULO;
+/* 7 */ precedence left PRODUCTO, DIVISION;
+/* 8 */ precedence right POTENCIA;
+/* 8 */ precedence right NOT;
+//                                                  PRODUCCIONES
+start with inicio;
+
+inicio                  ::= 
+                              body
+                            | //epsilon
+                            ;
+body                    ::= 
+                              R_INICIO bloque_instrucciones:a R_FIN
+                              {:
+                                ListaInstruccionesGo l = new ListaInstruccionesGo(a, getIdentacion());
+                                Go p = new Go(l);
+                                p.setMetodos(getMetodos());
+                                crearCodigo(p.generarCodigoGo());
+                              :}
+                            ;
+bloque_instrucciones    ::=
+                              {:aumentarIdentacion();:}instruccion:a{:reducirIdentacion();:} otra_instruccion:b
+                              {:
+                                ArrayList<TraductorGo> instrucciones = new ArrayList();
+                                if(a != null)
+                                  instrucciones.add(a);
+                                if(b != null)
+                                  instrucciones.addAll(b);
+                                RESULT = instrucciones;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+instruccion             ::=
+                              declaracion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | asignacion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | condicional_si:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | condicional_segun:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_para:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_mientras:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ciclo_repetir_hasta:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | retorno:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | metodos:a
+                              {:
+                                agregarMetodo(a);
+                                RESULT = null;
+                              :}
+                            | funciones:a
+                              {:
+                                agregarMetodo(a);
+                                RESULT = null;
+                              :}
+                            | imprimir:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | imprimirln:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | ejecutar_metodo:a
+                              {:
+                                RESULT = a;
+                              :}
+                            | error
+                            ;
+otra_instruccion        ::= 
+                              {:aumentarIdentacion();:}instruccion:a{:reducirIdentacion();:} otra_instruccion:b
+                              {:
+                                ArrayList<TraductorGo> instrucciones = new ArrayList();
+                                if(a != null)
+                                  instrucciones.add(a);
+                                instrucciones.addAll(b);
+                                RESULT = instrucciones;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = new ArrayList();
+                              :}
+                            ;
+//////////////////////////////////////////////// <<<< ASIGNACIONES Y OPERACIONES >>>>
+declaracion             ::= 
+                              R_INGRESAR variables:a R_COMO tipo_dato:b R_CONVALOR expresion_asignacion:c PTO_COMA
+                              {:
+                                DeclaracionGo d = new DeclaracionGo(b,c,a, getIdentacion()); 
+                                txt_terminal.append(d.generarCodigoGo()+"\n");
+                                RESULT = d; 
+                              :}
+                            ;
+variables               ::= 
+                              VALUE_ID:a otra_variable:b
+                              {: 
+                                ArrayList<ValorElementoGo> variables = new ArrayList();
+                                ValorElementoGo valor = new ValorElementoGo(a.getLexeme(),"var");
+                                variables.add(valor);
+                                if(b != null)
+                                  variables.addAll(b);
+                                ListaVariablesGo l = new ListaVariablesGo(variables);
+                                l.setVariables(variables);
+                                RESULT = l;
+                              :}
+                            ;
+otra_variable           ::=  
+                              COMA VALUE_ID:a otra_variable:b
+                              {: 
+                                ArrayList<ValorElementoGo> valores = new ArrayList();
+                                ValorElementoGo valor = new ValorElementoGo(a.getLexeme(),"var");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                RESULT = valores; 
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+tipo_dato               ::=
+                              R_BOOL:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_CHAR:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_STRING:a
+                            {: RESULT = a.getLexeme(); :}
+                            | R_NUMBER:a
+                            {: RESULT = a.getLexeme(); :}
+                            ;
+expresion_asignacion    ::= 
+                              operacion_general:a
+                              {:
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                RESULT = l;
+                              :}
+                            ;
+asignacion              ::=
+                              variables:a FLECHA expresion_asignacion:b PTO_COMA
+                              {:
+                                AsignacionGo asig = new AsignacionGo(a,b, getIdentacion());
+                                txt_terminal.append(asig.generarCodigoGo()+"\n");
+                                RESULT = asig;
+                              :}
+                            ;
+operacion_general       ::= operacion_general:a AND operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("and", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a OR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("or", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | NOT operacion_general:a
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                ValorElementoGo v = new ValorElementoGo("not", "operacion");
+                                l.add(v);
+                                l.addAll(a);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MAYOR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("mayor", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MENOR operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("menor", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MAYOR_O operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("mayor_o_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MENOR_O operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("menor_o_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a DIFERENTE operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("es_diferente", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a ES_IGUAL operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("es_igual", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a SUMA operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("+", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a RESTA operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("-", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a PRODUCTO operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("*", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a MODULO operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("mod", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a POTENCIA CORCHETE_I operacion_general:b CORCHETE_D
+                              {:
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                ListaValoresGo la = new ListaValoresGo(a);
+                                ListaValoresGo lb = new ListaValoresGo(b);
+                                String oper = "math.Pow(float64("+la.generarCodigoGo()+"),float64("+lb.generarCodigoGo()+"))";
+                                ValorElementoGo ele = new ValorElementoGo(oper,"valor");
+                                l.add(ele);
+                                RESULT = l;
+                              :}
+                            | operacion_general:a DIVISION operacion_general:b
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.addAll(a);
+                                ValorElementoGo v = new ValorElementoGo("/", "operacion");
+                                l.add(v);
+                                l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | valor_primario:a
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                l.add(a);
+                                RESULT = l;
+                              :}
+                            | RESTA operacion_general:a
+                              {: 
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                ValorElementoGo v = new ValorElementoGo("-", "operacion");
+                                l.add(v);
+                                l.addAll(a);
+                                RESULT = l;
+                              :}
+                            | PARENTESIS_I operacion_general:a PARENTESIS_D
+                              {:
+                                ArrayList<ValorElementoGo> l = new ArrayList();
+                                ValorElementoGo v1 = new ValorElementoGo("(","parI");
+                                l.add(v1);
+                                l.addAll(a);
+                                ValorElementoGo v2 = new ValorElementoGo(")","parD");
+                                l.add(v2);
+                                RESULT = l;
+                              :}
+                            ;
+valor_primario          ::=
+                              VALUE_ID:a  {: RESULT = new ValorElementoGo(a.getLexeme(),"var"); :}
+                            | VALUE_NUMERO:a {: RESULT = new ValorElementoGo(a.getLexeme(), "numero"); :}
+                            | VALUE_STRING:a {: RESULT = new ValorElementoGo(a.getLexeme(), "cadena"); :}
+                            | VALUE_CHAR:a 
+                            {:
+                              Pattern patron = Pattern.compile("\'\\$\\{(?<CHART>[0-9]{1,3})\\}\'");
+                              Matcher matcher = patron.matcher(a.getLexeme());
+                              if(matcher.find()){
+                                  char c = (char)Integer.parseInt(matcher.group("CHART"));
+                                  RESULT = new ValorElementoGo("'"+String.valueOf(c)+"'", "caracter");
+                              }else{
+                                  RESULT = new ValorElementoGo(a.getLexeme(),"caracter");
+                              }
+                            :}
+                            | VALUE_BOOL:a  {: RESULT = new ValorElementoGo(a.getLexeme(), "boolean"); :}
+                            | R_EJECUTAR VALUE_ID:a PARENTESIS_I lista_parametros:b PARENTESIS_D
+                              {:
+                                String s = a.getLexeme()+ "(";
+                                if(b != null)
+                                  s += b.generarCodigoGo();
+                                s+= ")";
+                                RESULT = new ValorElementoGo(s,"funcion");
+                              :} 
+                            ;
+
+///////////////////////////////////// <<<< CONDICIONAL IF >>>>
+condicional_si          ::= 
+                              R_SI condicion:a R_ENTONCES bloque_instrucciones:b osi_condiciones:c delo_contrario:d R_FINSI
+                              {:
+                                ListaOsiCondicionGo losi = new ListaOsiCondicionGo(c,getIdentacion());
+                                ListaInstruccionesGo ins = new ListaInstruccionesGo(b,getIdentacion());
+                                CondicionSiGo cond = new CondicionSiGo(a,losi,d,ins,getIdentacion());
+                                txt_terminal.append(cond.generarCodigoGo()+"\n");
+                                RESULT = cond;
+                              :}
+                            ;
+condicion               ::=
+                              operacion_general:a
+                              {:
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                RESULT = l;
+                              :}
+                            ;
+osi_condiciones         ::=
+                              R_OSI condicion:a R_ENTONCES bloque_instrucciones:b osi_condiciones:c
+                              {:
+                                ArrayList<CondicionOSiGo> osis = new ArrayList();
+                                ListaInstruccionesGo ins = new ListaInstruccionesGo(b, getIdentacion());
+                                CondicionOSiGo osi = new CondicionOSiGo(a,ins,getIdentacion());
+                                osis.add(osi);
+                                if(c != null)
+                                  osis.addAll(c);
+                                RESULT = osis;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+delo_contrario          ::=
+                              R_DELOCONTRARIO bloque_instrucciones:a
+                              {:
+                                ListaInstruccionesGo ins = new ListaInstruccionesGo(a, getIdentacion());
+                                SiDeLoContrarioGo s = new SiDeLoContrarioGo(ins,getIdentacion());
+                                RESULT = s; 
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< CONDICIONAL SEGUN >>>>
+condicional_segun       ::=
+                              R_SEGUN valor_segun:a R_HACER opciones_segun:b delo_contrario_segun:c  R_FINSEGUN
+                              {:
+                                ListaValoresGo lv = new ListaValoresGo(a);
+                                /*for(OpcionSegunGo op: b){
+                                  op.setComparacion(lv);
+                                }*/
+                                ListaOpcionSegunGo lop = new ListaOpcionSegunGo(b);
+                                CondicionSegunGo cs = new CondicionSegunGo(lop,c,lv,getIdentacion());
+                                txt_terminal.append(cs.generarCodigoGo() + "\n");
+                                RESULT = cs;
+                              :}
+                            ;
+instrucciones_segun      ::= 
+                              bloque_instrucciones:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+valor_segun             ::=
+                              operacion_general:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+opciones_segun          ::= 
+                              opcion_segun:a otra_opcion_segun:b
+                              {:
+                                ArrayList<OpcionSegunGo> l = new ArrayList();
+                                a.setTipo(0);
+                                l.add(a);
+                                if(b != null)
+                                  l.addAll(b);
+                                RESULT = l;
+                              :}
+                            ;
+opcion_segun            ::= 
+                              INTERROGANTE_I valor_segun:a INTERROGANTE_D R_ENTONCES bloque_instrucciones:b
+                              {:
+                                ListaInstruccionesGo l = new ListaInstruccionesGo(b, getIdentacion());
+                                ListaValoresGo lv = new ListaValoresGo(a);
+                                OpcionSegunGo op = new OpcionSegunGo(lv,l,getIdentacion(),1);
+                                RESULT = op;
+                              :}
+                            ;
+otra_opcion_segun       ::= 
+                              opcion_segun:a otra_opcion_segun:b
+                              {:
+                                ArrayList<OpcionSegunGo> l = new ArrayList();
+                                l.add(a);
+                                if(b != null)
+                                  l.addAll(b);
+                                RESULT = l;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+delo_contrario_segun    ::=
+                              R_DELOCONTRARIO R_ENTONCES instrucciones_segun:a
+                              {:
+                                ListaInstruccionesGo l = new ListaInstruccionesGo(a, getIdentacion());
+                                DeLoContrarioSegunGo dl = new DeLoContrarioSegunGo(l, getIdentacion());
+                                RESULT = dl;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+
+////////////////////////////////////// <<<< CICLO PARA >>>>
+ciclo_para              ::=
+                              R_PARA VALUE_ID:i FLECHA operacion_general:a R_HASTA operacion_general:b con_incremento:c R_HACER bloque_instrucciones:d R_FINPARA
+                              {:
+                                ValorElementoGo id = new ValorElementoGo(i.getLexeme(),"id");
+                                ListaValoresGo ini = new ListaValoresGo(a);
+                                ListaValoresGo fini = new ListaValoresGo(b);
+                                ListaValoresGo paso = c;
+                                ListaInstruccionesGo inst = new ListaInstruccionesGo(d, getIdentacion());
+                                CicloParaGo cic = new CicloParaGo(id,ini,fini,paso,inst,getIdentacion());
+                                txt_terminal.append(cic.generarCodigoGo() + "\n");
+                                RESULT = cic;
+                              :}
+                            ;
+con_incremento          ::=
+                              R_CON R_INCREMENTO operacion_general:a
+                              {:
+                                RESULT = new ListaValoresGo(a);
+                              :}
+                            | // epsilon
+                              {:
+                               RESULT = null;
+                              :}
+                            ;
+////////////////////////////////////// <<<< CICLO MIENTRAS >>>>
+ciclo_mientras          ::= 
+                              R_MIENTRAS condicion:a R_HACER bloque_instrucciones:b R_FINMIENTRAS
+                              {:
+                                ListaInstruccionesGo inst = new ListaInstruccionesGo(b, getIdentacion());
+                                ListaValoresGo cond = a;
+                                CicloMientrasGo mien = new CicloMientrasGo(cond,inst,getIdentacion());
+                                txt_terminal.append(mien.generarCodigoGo() + "\n");
+                                RESULT = mien;
+                              :}
+                            ;
+////////////////////////////////////// <<<< CICLO REPETIR HASTA >>>>
+ciclo_repetir_hasta     ::=
+                              R_REPETIR bloque_instrucciones:a R_HASTAQUE condicion:b
+                              {:
+                                ListaValoresGo cond = b;
+                                ListaInstruccionesGo inst = new ListaInstruccionesGo(a,getIdentacion());
+                                CicloRepetirGo cr = new CicloRepetirGo(cond,inst,getIdentacion());
+                                txt_terminal.append(cr.generarCodigoGo() + "\n");
+                                RESULT = cr;
+                              :}
+                            ;
+///////////////////////////////////// <<<< RETORNO >>>>
+retorno                 ::= 
+                              R_RETORNAR retorno_val:a PTO_COMA
+                              {:
+                                ListaValoresGo l = a;
+                                RetornoGo r = new RetornoGo(a,getIdentacion());
+                                txt_terminal.append(r.generarCodigoGo() + "\n");
+                                RESULT = r;
+                              :}
+                            ;
+retorno_val             ::= 
+                              condicion:a
+                              {:
+                                RESULT = a;
+                              :}
+                            ;
+///////////////////////////////////// <<<< METODOS >>>>
+metodos                 ::=
+                              R_METODO VALUE_ID:a con_parametros:b bloque_instrucciones:c R_FINMETODO
+                              {:
+                                ListaIngresoParametrosGo l = b;
+                                ListaInstruccionesGo li = new ListaInstruccionesGo(c, getIdentacion());
+                                MetodoGo met = new MetodoGo(a.getLexeme(),l,li,getIdentacion());
+                                txt_terminal.append(met.generarCodigoGo()+"\n");
+                                RESULT = met;
+                              :}
+                            ;
+///////////////////////////////////// <<<< FUNCIONES >>>>
+funciones               ::=
+                              R_FUNCION VALUE_ID:a tipo_dato:b con_parametros:c bloque_instrucciones:d R_FINFUNCION
+                              {:
+                                ListaIngresoParametrosGo l = c;
+                                ListaInstruccionesGo li = new ListaInstruccionesGo(d, getIdentacion());
+                                FuncionGo fun = new FuncionGo(b,a.getLexeme(),l,li,getIdentacion());
+                                txt_terminal.append(fun.generarCodigoGo() + "\n");
+                                RESULT = fun;
+                              :}
+                            ;
+///////////////////////////////////// <<<< EJECUTAR >>>>
+ejecutar_metodo         ::= 
+                              R_EJECUTAR VALUE_ID:a PARENTESIS_I lista_parametros:b PARENTESIS_D PTO_COMA
+                              {:
+                                EjecutarGo e = new EjecutarGo(a.getLexeme(), b, getIdentacion());
+                                txt_terminal.append(e.generarCodigoGo() + "\n");
+                                RESULT = e;
+                              :}
+                            ;
+lista_parametros        ::=
+                              operacion_general:a otro_param:b
+                              {:
+                                ArrayList<ValorElementoGo> valores = new ArrayList();
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                ValorElementoGo valor = new ValorElementoGo(l.generarCodigoGo(),"valor");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                ListaParametrosGo l2 = new ListaParametrosGo(valores);
+                                RESULT = l2;
+                              :}
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+otro_param              ::=
+                              COMA operacion_general:a otro_param:b
+                              {:
+                                ArrayList<ValorElementoGo> valores = new ArrayList();
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                ValorElementoGo valor = new ValorElementoGo(l.generarCodigoGo(),"valor");
+                                valores.add(valor);
+                                if(b != null)
+                                  valores.addAll(b);
+                                RESULT = valores; 
+                              :}
+                              
+                            | //epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< PARAMETROS >>>>
+con_parametros          ::=
+                              R_CONPARAMETROS PARENTESIS_I parametro:a otro_parametro:b PARENTESIS_D
+                              {:
+                                ArrayList<ParametroGo> par = new ArrayList();
+                                par.add(a);
+                                if(b != null)
+                                  par.addAll(b);
+                                ListaIngresoParametrosGo l = new ListaIngresoParametrosGo(par);
+                                RESULT = l;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+parametro               ::= 
+                              VALUE_ID:a tipo_dato:b
+                              {:
+                                RESULT = new ParametroGo(a.getLexeme(), b);
+                              :} 
+                            ;
+otro_parametro          ::= 
+                              COMA parametro:a otro_parametro:b
+                              {:
+                                ArrayList<ParametroGo> par = new ArrayList();
+                                par.add(a);
+                                if(b != null)
+                                  par.addAll(b);
+                                RESULT = par;
+                              :}
+                            | // epsilon
+                              {:
+                                RESULT = null;
+                              :}
+                            ;
+///////////////////////////////////// <<<< IPRESIONES >>>>
+imprimir                ::= 
+                              R_IMPRIMIR operacion_general:a PTO_COMA
+                              {:
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                ImprimirGo i = new ImprimirGo(l, getIdentacion());
+                                txt_terminal.append(i.generarCodigoGo() + "\n");
+                                RESULT = i;
+                              :}
+                            ;
+imprimirln              ::= 
+                              R_IMPRIMIRLN operacion_general:a PTO_COMA
+                              {:
+                                ListaValoresGo l = new ListaValoresGo(a);
+                                ImprimirLnGo i = new ImprimirLnGo(l, getIdentacion());
+                                txt_terminal.append(i.generarCodigoGo() + "\n");
+                                RESULT = i;
+                              :}
+                            ;
