@@ -9,8 +9,7 @@ import java_cup.runtime.*;
 import analyzer.ParserPySym;
 import analyzer.Lexer;
 import java_cup.runtime.XMLElement;
-import dao.Token;
-import dao.TokenError;
+import dao.*;
 import java.util.ArrayList;
 import javax.swing.JTextArea;
 import translator_py.*;
@@ -716,13 +715,15 @@ public class ParserPy extends java_cup.runtime.lr_parser {
 
 
   private JTextArea txt_terminal = WindowMain.txt_terminal;
+  private ArrayList<SintaxError> errores_sintacticos = new ArrayList();
   int ident = 0;
   private String codig = "";
   public String getCode(){
     return codig;
   }
-  ArrayList<TokenError> listadoErroresSintacticos = new ArrayList();
-	
+	public ArrayList<SintaxError> getErrores(){
+    return errores_sintacticos;
+  }
 	@Override
 	public void syntax_error(Symbol a){
 		Token tokenError = (Token) a.value;//lo transformamos en token para obtener su lexema, fila y columna		
@@ -736,7 +737,6 @@ public class ParserPy extends java_cup.runtime.lr_parser {
 			System.out.println("END OF FILE");
 			TokenError tokenErrorAux = new TokenError("ERROR SINTACTICO", "Etiqueta de cierre",
                                                  "La etiqueta de cierre debe ser <C_GCIC>", -1, -1);
-			listadoErroresSintacticos.add(tokenErrorAux);
 		}else{
       for(int i = 0; i < expected_token_ids().size(); i++){
         msgError += symbl_name_from_id(expected_token_ids().get(i)) + " ";
@@ -746,9 +746,9 @@ public class ParserPy extends java_cup.runtime.lr_parser {
       String errorSin = "<<<SINTAX ERROR:PY>>>: linea: "+
                         +tokenError.getLine()+" columna: "+tokenError.getColumn()+" MENSAJE: " + msgError 
                         + " pero se obtuvo: " + tokenError.getLexeme() + " de tipo: " + tokenError.getType();
-      TokenError tokenErrorAux = new TokenError(msgError, tokenError.getLexeme(), "ERROR SINTACTICO", linea, columna);
+      SintaxError six = new SintaxError(columna, linea, errorSin);
+      errores_sintacticos.add(six);
       txt_terminal.append(errorSin+"\n");
-      listadoErroresSintacticos.add(tokenErrorAux);
     }
   }
   public void report_error(String message, Object info) {
@@ -757,6 +757,8 @@ public class ParserPy extends java_cup.runtime.lr_parser {
     
 	public void report_fatal_error(String message, Object info) {
     txt_terminal.append("Error Fatal:PY: " + info + "\n");
+    SintaxError es = new SintaxError(-1, -1, "Error Fatal: " + info);
+    errores_sintacticos.add(es);
   }
 
 	public void aumentarIdentacion(){
@@ -770,10 +772,6 @@ public class ParserPy extends java_cup.runtime.lr_parser {
 	public int getIdentacion(){
 		return this.ident;
 	}
-
-  protected int error_sync_size() {
-      return 1;
-  }
   private void crearCodigo(String codi){
     codig = codi;
   }

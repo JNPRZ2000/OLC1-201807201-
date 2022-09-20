@@ -1,0 +1,284 @@
+    //                                          <<<--- TOKENS --->>>
+    //                              SIMBOLOS
+terminal PARENTESIS_I  
+terminal PARENTESIS_D  
+terminal FLECHA    
+terminal INTERROGANTE_I
+terminal INTERROGANTE_D
+terminal PTO_COMA  
+terminal COMA      
+terminal CORCHETE_I
+terminal CORCHETE_D
+    //                              VALORES
+terminal VALUE_NUMERO  
+terminal VALUE_STRING  
+terminal VALUE_CHAR
+terminal VALUE_BOOL
+terminal VALUE_ID  
+    //                              OPERADORES
+    //                  OPERADORES ARITMETICOS
+terminal SUMA      
+terminal RESTA     
+terminal PRODUCTO  
+terminal DIVISION  
+terminal MODULO    
+terminal POTENCIA  
+    //                  OPERADORES LOGICOS
+terminal AND       
+terminal OR        
+terminal NOT       
+    //                  OPERADORES RELACIONALES
+terminal MAYOR     
+terminal MENOR     
+terminal MAYOR_O   
+terminal MENOR_O   
+terminal ES_IGUAL  
+terminal DIFERENTE 
+    //                              PALABRAS RESERVADAS
+terminal R_INICIO  
+terminal R_FIN     
+    //                  DECLARACION
+terminal R_INGRESAR
+terminal R_COMO    
+terminal R_CONVALOR
+    //                  CONDICIONALES
+terminal R_SI      
+terminal R_ENTONCES
+terminal R_DELOCONTRARIO
+terminal R_OSI     
+terminal R_FINSI   
+    //                  ELECCION MULTIPLE
+terminal R_SEGUN   
+terminal R_HACER   
+terminal R_FINSEGUN
+    //                  CICLOS
+terminal R_PARA    
+terminal R_HASTA   
+terminal R_CON     
+terminal R_INCREMENTO  
+terminal R_FINPARA 
+terminal R_MIENTRAS
+terminal R_FINMIENTRAS 
+terminal R_REPETIR 
+terminal R_HASTAQUE
+    //                  SENTENCIAS
+terminal R_RETORNAR
+terminal R_EJECUTAR
+    //                  IMPRESIONES
+terminal R_IMPRIMIR
+terminal R_IMPRIMIRLN  
+    //                  METODOS Y FUNCIONES          
+terminal R_METODO  
+terminal R_CONPARAMETROS
+terminal R_FINMETODO   
+terminal R_FUNCION 
+terminal R_FINFUNCION  
+    //                  TIPOS DE DATOS
+terminal R_STRING  
+terminal R_CHAR    
+terminal R_BOOL    
+terminal R_NUMBER  
+//                                                  NO TERMINALES
+no terminal inicio              
+no terminal body                
+no terminal bloque_instrucciones
+no terminal instruccion         
+no terminal otra_instruccion    
+//DECLARACION Y ASIGNACION
+no terminal declaracion         
+no terminal expresion_asignacion
+no terminal variables           
+no terminal otra_variable       
+no terminal tipo_dato           
+no terminal asignacion          
+//ARITMETICA
+no terminal operacion_general   
+no terminal valor_primario      
+//IF - ENDIF
+no terminal condicional_si      
+no terminal condicion           
+no terminal osi_condiciones     
+no terminal delo_contrario      
+//SEGUN - FINSEGUN
+no terminal condicional_segun   
+no terminal opciones_segun      
+no terminal opcion_segun        
+no terminal otra_opcion_segun   
+no terminal valor_segun         
+no terminal instrucciones_segun 
+no terminal delo_contrario_segun
+//CICLO PARA
+no terminal ciclo_para          
+no terminal con_incremento      
+//CICLO MIENTRAS
+no terminal ciclo_mientras      
+//CICLO REPETIR HASTA
+no terminal ciclo_repetir_hasta 
+//RETORNO
+no terminal retorno             
+no terminal retorno_val         
+//FUNCIONES Y METODOS
+no terminal metodos             
+no terminal funciones           
+no terminal con_parametros      
+no terminal parametro           
+no terminal otro_parametro      
+//IMPRESIONES
+no terminal imprimir            
+no terminal imprimirln          
+//EJECUTAR
+no terminal ejecutar_metodo     
+no terminal lista_parametros    
+no terminal otro_param          
+//                                                              SIMBOLO INICIAL
+        inicio
+
+//                                                  PRODUCCIONES
+inicio                  -> 
+                              body
+                            | epsilon
+body                    -> 
+                              R_INICIO bloque_instrucciones R_FIN
+bloque_instrucciones    ->
+                              instruccion otra_instruccion
+                            | epsilon
+instruccion             ->
+                              declaracion
+                            | asignacion
+                            | condicional_si
+                            | condicional_segun
+                            | ciclo_para
+                            | ciclo_mientras
+                            | ciclo_repetir_hasta
+                            | retorno
+                            | metodos
+                            | funciones
+                            | imprimir
+                            | imprimirln
+                            | ejecutar_metodo
+                            | error
+otra_instruccion        -> 
+                              instruccion otra_instruccion
+                            | epsilon
+//////////////////////////////////////////////// <<<< ASIGNACIONES Y OPERACIONES >>>>
+declaracion             -> 
+                              R_INGRESAR variables R_COMO tipo_dato R_CONVALOR expresion_asignacion PTO_COMA
+variables               -> 
+                              VALUE_ID otra_variable
+otra_variable           ->  
+                              COMA VALUE_ID otra_variable
+                            | epsilon
+tipo_dato               ->
+                              R_BOOL
+                            | R_CHAR
+                            | R_STRING
+                            | R_NUMBER
+expresion_asignacion    -> 
+                              operacion_general
+asignacion              ->
+                              variables FLECHA expresion_asignacion PTO_COMA
+operacion_general       -> 
+                              operacion_general AND operacion_general
+                            | operacion_general OR operacion_general
+                            | NOT operacion_general
+                            | operacion_general MAYOR operacion_general
+                            | operacion_general MENOR operacion_general
+                            | operacion_general MAYOR_O operacion_general
+                            | operacion_general MENOR_O operacion_general
+                            | operacion_general DIFERENTE operacion_general
+                            | operacion_general ES_IGUAL operacion_general
+                            | operacion_general SUMA operacion_general
+                            | operacion_general RESTA operacion_general
+                            | operacion_general PRODUCTO operacion_general
+                            | operacion_general MODULO operacion_general
+                            | operacion_general POTENCIA CORCHETE_I operacion_general CORCHETE_D
+                            | operacion_general DIVISION operacion_general
+                            | valor_primario
+                            | RESTA operacion_general
+                            | PARENTESIS_I operacion_general PARENTESIS_D
+valor_primario          ->
+                              VALUE_ID
+                            | VALUE_NUMERO
+                            | VALUE_STRING
+                            | VALUE_CHAR
+                            | VALUE_BOOL
+                            | R_EJECUTAR VALUE_ID PARENTESIS_I lista_parametros PARENTESIS_D
+///////////////////////////////////// <<<< CONDICIONAL IF >>>>
+condicional_si          -> 
+                              R_SI condicion R_ENTONCES 
+                              bloque_instrucciones 
+                              osi_condiciones 
+                              delo_contrario 
+                              R_FINSI
+condicion               ->
+                              operacion_general
+osi_condiciones         ->
+                              R_OSI condicion R_ENTONCES bloque_instrucciones osi_condiciones
+                            | epsilon
+delo_contrario          ->
+                              R_DELOCONTRARIO bloque_instrucciones
+                            | epsilon
+///////////////////////////////////// <<<< CONDICIONAL SEGUN >>>>
+condicional_segun       ->
+                              R_SEGUN valor_segun R_HACER opciones_segun delo_contrario_segun  R_FINSEGUN
+instrucciones_segun      -> 
+                              bloque_instrucciones
+valor_segun             ->
+                              operacion_general
+opciones_segun          -> 
+                              opcion_segun otra_opcion_segun
+opcion_segun            -> 
+                              INTERROGANTE_I valor_segun INTERROGANTE_D R_ENTONCES bloque_instrucciones
+otra_opcion_segun       -> 
+                              opcion_segun otra_opcion_segun
+                            | epsilon
+delo_contrario_segun    ->
+                              R_DELOCONTRARIO R_ENTONCES instrucciones_segun
+                            | epsilon
+////////////////////////////////////// <<<< CICLO PARA >>>>
+ciclo_para              ->
+                              R_PARA VALUE_ID:i FLECHA operacion_general R_HASTA operacion_general con_incremento R_HACER 
+                              bloque_instrucciones 
+                              R_FINPARA
+con_incremento          ->
+                              R_CON R_INCREMENTO operacion_general
+////////////////////////////////////// <<<< CICLO MIENTRAS >>>>
+ciclo_mientras          -> 
+                              R_MIENTRAS condicion R_HACER bloque_instrucciones R_FINMIENTRAS
+////////////////////////////////////// <<<< CICLO REPETIR HASTA >>>>
+ciclo_repetir_hasta     ->
+                              R_REPETIR bloque_instrucciones R_HASTAQUE condicion
+///////////////////////////////////// <<<< RETORNO >>>>
+retorno                 -> 
+                              R_RETORNAR retorno_val PTO_COMA
+retorno_val             -> 
+                              condicion
+///////////////////////////////////// <<<< METODOS >>>>
+metodos                 ->
+                              R_METODO VALUE_ID con_parametros bloque_instrucciones R_FINMETODO
+///////////////////////////////////// <<<< FUNCIONES >>>>
+funciones               ->
+                              R_FUNCION VALUE_ID tipo_dato con_parametros bloque_instrucciones R_FINFUNCION
+///////////////////////////////////// <<<< EJECUTAR >>>>
+ejecutar_metodo         -> 
+                              R_EJECUTAR VALUE_ID PARENTESIS_I lista_parametros PARENTESIS_D PTO_COMA
+lista_parametros        ->
+                              operacion_general otro_param
+                            | epsilon
+otro_param              ->
+                              COMA operacion_general otro_param 
+                            | epsilon
+///////////////////////////////////// <<<< PARAMETROS >>>>
+con_parametros          ->
+                              R_CONPARAMETROS PARENTESIS_I parametro otro_parametro PARENTESIS_D
+                            | epsilon
+parametro               -> 
+                              VALUE_ID tipo_dato
+otro_parametro          -> 
+                              COMA parametro otro_parametro
+                            | epsilon
+///////////////////////////////////// <<<< IPRESIONES >>>>
+imprimir                -> 
+                              R_IMPRIMIR operacion_general PTO_COMA
+imprimirln              -> 
+                              R_IMPRIMIRLN operacion_general PTO_COMA

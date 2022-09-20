@@ -7,6 +7,8 @@ package ui;
 import analyzer.Lexer;
 import analyzer.ParserGo;
 import analyzer.ParserPy;
+import dao.SintaxError;
+import dao.TokenError;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
@@ -34,6 +36,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
 import javax.swing.text.BadLocationException;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
@@ -60,6 +63,8 @@ public class WindowMain extends javax.swing.JFrame {
     public WindowMain() {
         this.code_python = "";
         this.code_go = "";
+        this.lex_er = "";
+        this.sin_er = "";
 
         initComponents();
         initComponentsCustom();
@@ -267,6 +272,11 @@ public class WindowMain extends javax.swing.JFrame {
         menu_report.add(item_flowchart);
 
         item_errors.setText("Errors");
+        item_errors.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                item_errorsActionPerformed(evt);
+            }
+        });
         menu_report.add(item_errors);
 
         men_bar.add(menu_report);
@@ -318,13 +328,16 @@ public class WindowMain extends javax.swing.JFrame {
 
     private void txt_codeKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txt_codeKeyPressed
         // TODO add your handling code here:
-        if(evt.isControlDown()){
-            if(evt.getKeyCode() == KeyEvent.VK_S)
+        if (evt.isControlDown()) {
+            if (evt.getKeyCode() == KeyEvent.VK_S) {
                 this.save();
-            if(evt.getKeyCode() == KeyEvent.VK_A)
+            }
+            if (evt.getKeyCode() == KeyEvent.VK_A) {
                 this.open();
-            if(evt.getKeyCode() == KeyEvent.VK_R)
+            }
+            if (evt.getKeyCode() == KeyEvent.VK_R) {
                 this.runCode();
+            }
         }
     }//GEN-LAST:event_txt_codeKeyPressed
 
@@ -365,7 +378,6 @@ public class WindowMain extends javax.swing.JFrame {
                 FileWriter fw = new FileWriter(fn);
                 fw.write(code_go);
                 fw.close();
-                current_file = fn;
                 JOptionPane.showMessageDialog(this, "Archivo Guardado", "SAVE AS...", JOptionPane.PLAIN_MESSAGE);
                 Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + fn.getAbsolutePath());
             } catch (IOException ex) {
@@ -373,6 +385,12 @@ public class WindowMain extends javax.swing.JFrame {
             }
         }
     }//GEN-LAST:event_btn_goActionPerformed
+
+    private void item_errorsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_item_errorsActionPerformed
+        // TODO add your handling code here:
+        this.guardarErr(lex_er);
+        this.guardarErr(sin_er);
+    }//GEN-LAST:event_item_errorsActionPerformed
 
     /**
      * @param args the command line arguments
@@ -442,32 +460,81 @@ public class WindowMain extends javax.swing.JFrame {
     private File current_file;
     private String code_python;
     private String code_go;
+    private String lex_er;
+    private String sin_er;
 
-    private void runCode(){
+    private void guardarErr(String err) {
+        FileSystemView vSystema = FileSystemView.getFileSystemView();
+        JFileChooser fc = new JFileChooser(vSystema);
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("TXT", "txt", "TXT");
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setFileFilter(filter);
+        int selection = fc.showSaveDialog(this);
+        if (selection == JFileChooser.APPROVE_OPTION) {
+            try {
+                File fn = new File(fc.getSelectedFile() + ".txt");
+                FileWriter fw = new FileWriter(fn);
+                fw.write(err);
+                fw.close();
+                JOptionPane.showMessageDialog(this, "Archivo Guardado", "SAVE AS...", JOptionPane.PLAIN_MESSAGE);
+                Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + fn.getAbsolutePath());
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void runCode() {
         String entry = txt_code.getText();
         try {
             String entryc = new String(entry.getBytes("ISO-8859-1"), "UTF-8");
             String entryn = Normalizer.normalize(entry, Normalizer.Form.NFD).
                     replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
             System.out.println("TEXTO A ANALIZAR:\n" + entryn);
-            
+
             StringReader sr = new StringReader(entryn);
             Lexer lexer = new Lexer(sr);
             //lexer.setTerminal(txt_terminal);
             ParserPy parse = new ParserPy(lexer);
             //parse.setTerminal(txt_terminal);
-            
+
             StringReader sr2 = new StringReader(entryn);
             Lexer lexer2 = new Lexer(sr2);
             //lexer.setTerminal(txt_terminal);
             ParserGo parseGo = new ParserGo(lexer2);
             //parseGo.setTerminal(txt_terminal);
-            
+
             try {
                 parse.parse();
                 parseGo.parse();
                 code_python = parse.getCode();
                 code_go = parseGo.getCode();
+
+                ArrayList<TokenError> errores_token = lexer.getErrors();
+                String[] lineas = txt_code.getText().split("\n");
+                lex_er = "";
+                int cont = 0;
+                for (int i = 0; i < lineas.length; i++) {
+                    lex_er += lineas[i] + "\n";
+                    while (cont < errores_token.size() && errores_token.get(cont).getLine() == i + 1) {
+                        lex_er += "//" + errores_token.get(cont) + "\n";
+                        cont++;
+                    }
+                }
+                cont = 0;
+                sin_er = "";
+                ArrayList<SintaxError> ersi = parse.getErrores();
+                for (int i = 0; i < lineas.length; i++) {
+                    sin_er += lineas[i] + "\n";
+                    while (cont < ersi.size() && ersi.get(cont).getLine() == i + 1) {
+                        sin_er += "//" + ersi.get(cont) + "\n";
+                        cont++;
+                    }
+                    if (cont < ersi.size() && ersi.get(cont).getLine() == -1) {
+                        sin_er += "//F " + ersi.get(cont) + "\n";
+                    }
+                }
+
                 //txt_terminal.setText("");
             } catch (Exception ex) {
                 System.out.println("Error en la ejecucion del parser " + ex.getMessage());
@@ -480,7 +547,11 @@ public class WindowMain extends javax.swing.JFrame {
             System.out.println("Error al ejecutar el lexer o parser: " + ex2.getLocalizedMessage());
         }
     }
-    
+
+    private void guardarErrores(String contenido) {
+
+    }
+
     private void open() {
         FileSystemView vSystema = FileSystemView.getFileSystemView();
         JFileChooser fc = new JFileChooser(vSystema);
