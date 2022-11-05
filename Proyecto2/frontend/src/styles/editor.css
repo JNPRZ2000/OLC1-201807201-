@@ -1,0 +1,20 @@
+.code{
+    resize: none;
+    padding-right: 0.5%;
+    padding-left: 0.5%;
+    
+}
+.lines{
+    resize: none;
+    text-align: right;
+    padding-left: 5%;
+    padding-right: 5%;
+}
+.scroll-sync-code-line{
+    margin-top: 5px;
+    background-color:  #34495e;
+}
+.console{
+    resize: none;
+    padding-inline: 10px;
+}
